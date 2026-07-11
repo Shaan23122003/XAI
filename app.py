@@ -67,6 +67,14 @@ def build_lime_explainer(_X_train):
     This runs once per session, not on every prediction click.
     """
     return get_lime_explainer(_X_train)
+@st.cache_resource
+def build_shap_explainer(_pipeline):
+    """
+    Caches the SHAP TreeExplainer. Built once per session.
+    Prefixed with _ so Streamlit skips hashing the pipeline argument.
+    """
+    from src.explain import get_shap_explainer
+    return get_shap_explainer(_pipeline)
 
 # ── Main app ──────────────────────────────────────────────────────────────────
 def main():
@@ -229,9 +237,12 @@ def main():
         st.caption("Red = pushes toward Attrition · Indigo = pushes away")
 
         with st.spinner("Computing SHAP values…"):
-            shap_values, X_transformed, feature_names = explain_shap_single(
-                pipeline, df_input
-            )
+            preprocessor   = pipeline.named_steps["preprocessor"]
+            X_transformed  = preprocessor.transform(df_input)
+            feature_names  = preprocessor.get_feature_names_out()
+            feature_names  = [f.replace("cat__", "").replace("num__", "") for f in feature_names]
+            shap_explainer = build_shap_explainer(pipeline)
+            shap_values    = shap_explainer.shap_values(X_transformed)
 
         if isinstance(shap_values, list):
             sv = shap_values[1][0]
@@ -262,19 +273,25 @@ def main():
         st.pyplot(fig)
         plt.close(fig)
 
-    # ── LIME — separate section below ─────────────────────────────────────────
+    # ── LIME — on-demand only ─────────────────────────────────────────────────
     st.divider()
-    with st.expander("🟢 LIME — Local Linear Explanation", expanded=False):
-        st.caption(
-            "LIME perturbs the input and fits a local linear model to approximate "
-            "the prediction. This may take a few seconds."
-        )
-        with st.spinner("Generating LIME explanation…"):
+    st.markdown("#### 🟢 LIME — Local Linear Explanation")
+    st.caption(
+        "LIME runs 5,000 model perturbations and takes 15–30 seconds. "
+        "Click only when needed."
+    )
+
+    if st.button("Generate LIME Explanation", key="lime_btn"):
+        with st.spinner("Running LIME (this may take ~20 seconds)…"):
             lime_explainer, cat_maps, lime_feats, lime_cats = build_lime_explainer(X_train_raw)
             lime_exp = explain_lime_single(
                 pipeline, lime_explainer, cat_maps, lime_feats, lime_cats, df_input
             )
-        components.html(lime_exp.as_html(), height=500, scrolling=True)
+            st.session_state["lime_html"] = lime_exp.as_html()
+
+    if "lime_html" in st.session_state:
+        components.html(st.session_state["lime_html"], height=500, scrolling=True)
 
 if __name__ == "__main__":
     main()
+
