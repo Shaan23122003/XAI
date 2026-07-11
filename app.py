@@ -280,7 +280,80 @@ def main():
             pipeline, lime_explainer, cat_maps, lime_feats, lime_cats, df_input
         )
 
-    components.html(lime_exp.as_html(), height=500, scrolling=True)
+    # ── LIME class probabilities ──────────────────────────────────────────
+    lime_probs = lime_exp.predict_proba
+    lp1, lp2, _ = st.columns([1, 1, 2])
+    lp1.metric(label="No Attrition (LIME)", value=f"{lime_probs[0] * 100:.1f}%")
+    lp2.metric(label="Attrition (LIME)",    value=f"{lime_probs[1] * 100:.1f}%")
+
+    st.write("")
+
+    # ── LIME feature contribution chart ───────────────────────────────────
+    lime_list = lime_exp.as_list()
+    lime_features = [item[0] for item in lime_list]
+    lime_weights  = [item[1] for item in lime_list]
+
+    lime_chart_df = pd.DataFrame({
+        "Feature": lime_features,
+        "Weight": lime_weights
+    })
+    lime_chart_df["Abs_W"] = lime_chart_df["Weight"].abs()
+    lime_chart_df = lime_chart_df.sort_values(by="Abs_W", ascending=True)
+
+    fig2, ax2 = plt.subplots(figsize=(8, max(4, len(lime_chart_df) * 0.45)))
+    fig2.patch.set_facecolor("none")
+    ax2.set_facecolor("#1E293B")
+
+    lime_colors = [
+        "#F43F5E" if w > 0 else "#22D3EE"
+        for w in lime_chart_df["Weight"]
+    ]
+    bars = ax2.barh(
+        lime_chart_df["Feature"],
+        lime_chart_df["Weight"],
+        color=lime_colors,
+        edgecolor="none",
+        height=0.65
+    )
+
+    # Value labels on bars
+    for bar, val in zip(bars, lime_chart_df["Weight"]):
+        x_pos = bar.get_width()
+        ha = "left" if x_pos >= 0 else "right"
+        offset = 0.002 if x_pos >= 0 else -0.002
+        ax2.text(
+            x_pos + offset, bar.get_y() + bar.get_height() / 2,
+            f"{val:+.3f}", va="center", ha=ha,
+            color="#F1F5F9", fontsize=8, fontweight="600"
+        )
+
+    ax2.set_xlabel("Feature Weight", color="#94A3B8")
+    ax2.set_title(
+        "LIME Feature Contributions",
+        color="#F1F5F9", pad=14, fontsize=13, fontweight="bold"
+    )
+    ax2.tick_params(colors="#CBD5E1", labelsize=9)
+    ax2.xaxis.label.set_color("#94A3B8")
+    for spine in ["top", "right"]:
+        ax2.spines[spine].set_visible(False)
+    for spine in ["bottom", "left"]:
+        ax2.spines[spine].set_color("#334155")
+    ax2.axvline(0, color="#475569", linewidth=0.8, linestyle="--")
+    fig2.tight_layout()
+    st.pyplot(fig2)
+    plt.close(fig2)
+
+    # Legend
+    st.markdown(
+        "<div style='text-align:center; margin-top:0.5rem;'>"
+        "<span style='color:#F43F5E; font-weight:600;'>■</span> "
+        "<span style='color:#94A3B8; font-size:0.85rem;'>Pushes toward Attrition</span>"
+        "&nbsp;&nbsp;&nbsp;&nbsp;"
+        "<span style='color:#22D3EE; font-weight:600;'>■</span> "
+        "<span style='color:#94A3B8; font-size:0.85rem;'>Pushes toward Retention</span>"
+        "</div>",
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
