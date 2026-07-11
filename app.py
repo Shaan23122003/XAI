@@ -61,18 +61,12 @@ def load_training_data():
 
 @st.cache_resource
 def build_lime_explainer(_X_train):
-    """
-    Builds and caches the LIME explainer.
-    Prefixed with _ so Streamlit skips hashing the DataFrame argument.
-    This runs once per session, not on every prediction click.
-    """
+    """Builds and caches the LIME explainer once per session."""
     return get_lime_explainer(_X_train)
+
 @st.cache_resource
 def build_shap_explainer(_pipeline):
-    """
-    Caches the SHAP TreeExplainer. Built once per session.
-    Prefixed with _ so Streamlit skips hashing the pipeline argument.
-    """
+    """Caches the SHAP TreeExplainer once per session."""
     from src.explain import get_shap_explainer
     return get_shap_explainer(_pipeline)
 
@@ -108,7 +102,7 @@ def main():
         st.error("Model pipeline or training data not found. Please run src/train.py first.")
         return
 
-    # ── Sidebar — employee inputs (unchanged) ─────────────────────────────────
+    # ── Sidebar — employee inputs ─────────────────────────────────────────────
     st.sidebar.markdown("## 🧑‍💼 Employee Profile")
     st.sidebar.caption("Fill in the employee details below, then click Predict.")
     st.sidebar.divider()
@@ -170,25 +164,24 @@ def main():
     st.caption("Powered by XGBoost · Explained with SHAP & LIME · IBM HR Analytics Dataset")
     st.divider()
 
-    # ── Predict button — centered in main area ────────────────────────────────
+    # ── Predict button ────────────────────────────────────────────────────────
     btn_col, _ = st.columns([1, 3])
     predict_clicked = btn_col.button(
         "🔍 Run Prediction", type="primary", use_container_width=True
     )
     st.markdown(
-        "<p class='predict-hint'>Configure the employee profile in the sidebar, then click Run Prediction.</p>",
+        "<p class='predict-hint'>Configure the employee profile in the sidebar, "
+        "then click Run Prediction.</p>",
         unsafe_allow_html=True
     )
     st.divider()
 
     # ── Results ───────────────────────────────────────────────────────────────
     if not predict_clicked:
-        st.info(
-            "Results will appear here after you run a prediction.",
-            icon="📊"
-        )
+        st.info("Results will appear here after you run a prediction.", icon="📊")
         return
 
+    # ── Run model ─────────────────────────────────────────────────────────────
     with st.spinner("Running model…"):
         df_input = prepare_single_input(user_input)
         raw_pred = pipeline.predict(df_input)
@@ -203,7 +196,7 @@ def main():
         "Low"
     )
 
-    # ── Two-column layout: verdict left, SHAP chart right ────────────────────
+    # ── Verdict + SHAP side by side ───────────────────────────────────────────
     left, right = st.columns([1, 1.6], gap="large")
 
     with left:
@@ -218,7 +211,7 @@ def main():
         mc2.metric(label="Probability", value=f"{risk_pct:.1f}%")
         mc3.metric(label="Confidence",  value=confidence)
 
-        st.write("")  # spacing
+        st.write("")
 
         if is_attrition:
             st.error(
@@ -273,25 +266,21 @@ def main():
         st.pyplot(fig)
         plt.close(fig)
 
-    # ── LIME — on-demand only ─────────────────────────────────────────────────
+    # ── LIME — full width below ───────────────────────────────────────────────
     st.divider()
-    st.markdown("#### 🟢 LIME — Local Linear Explanation")
+    st.subheader("🟢 LIME — Local Linear Explanation")
     st.caption(
-        "LIME runs 5,000 model perturbations and takes 15–30 seconds. "
-        "Click only when needed."
+        "LIME perturbs the input and fits a local linear model to approximate "
+        "the prediction around this data point."
     )
 
-    if st.button("Generate LIME Explanation", key="lime_btn"):
-        with st.spinner("Running LIME (this may take ~20 seconds)…"):
-            lime_explainer, cat_maps, lime_feats, lime_cats = build_lime_explainer(X_train_raw)
-            lime_exp = explain_lime_single(
-                pipeline, lime_explainer, cat_maps, lime_feats, lime_cats, df_input
-            )
-            st.session_state["lime_html"] = lime_exp.as_html()
+    with st.spinner("Generating LIME explanation…"):
+        lime_explainer, cat_maps, lime_feats, lime_cats = build_lime_explainer(X_train_raw)
+        lime_exp = explain_lime_single(
+            pipeline, lime_explainer, cat_maps, lime_feats, lime_cats, df_input
+        )
 
-    if "lime_html" in st.session_state:
-        components.html(st.session_state["lime_html"], height=500, scrolling=True)
+    components.html(lime_exp.as_html(), height=500, scrolling=True)
 
 if __name__ == "__main__":
     main()
-
