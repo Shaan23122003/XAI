@@ -1,2 +1,0 @@
-# XAI
-XAI in HR
