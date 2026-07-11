@@ -2,8 +2,6 @@ import pandas as pd
 import numpy as np
 import shap
 from lime.lime_tabular import LimeTabularExplainer
-import dice_ml
-from dice_ml import Dice
 
 # ==========================================
 # SHAP Helpers
@@ -47,7 +45,7 @@ def explain_shap_single(pipeline, X_single):
     feature_names = preprocessor.get_feature_names_out()
     feature_names = [f.replace("cat__", "").replace("num__", "") for f in feature_names]
     
-    return shap_values[0], X_transformed[0], feature_names
+    return shap_values, X_transformed[0], feature_names
 
 
 # ==========================================
@@ -123,6 +121,8 @@ def get_dice_explainer(pipeline, df_train_full, continuous_features=None):
     Initializes a DiCE explainer. 
     df_train_full MUST contain both the features AND the target column ('Attrition').
     """
+    import dice_ml
+    from dice_ml import Dice
     if continuous_features is None:
         continuous_features = ["Age", "MonthlyIncome", "YearsAtCompany", "DistanceFromHome"]
         

@@ -9,7 +9,7 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
 # Import helpers from utils.py
-from utils import clean_dataframe, encode_target, split_features_target
+from src.utils import clean_dataframe, encode_target, split_features_target
 
 def main():
     print("Loading raw data...")
