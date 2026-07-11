@@ -23,11 +23,7 @@ from src.explain import (
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 MODEL_PATH = "models/xgb_pipeline.pkl"
-<<<<<<< HEAD
-DATA_PATH  = "data/Raw/XAI_HR_NUMERIC.csv"
-=======
 DATA_PATH = "data/Raw/XAI_HR_NUMERIC.csv"
->>>>>>> ea85b64eb980380ad50b35a893769aeacf5bb460
 
 st.set_page_config(
     page_title="HR Attrition Intelligence",
