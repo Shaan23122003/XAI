@@ -23,7 +23,7 @@ from src.explain import (
 
 # Configuration
 MODEL_PATH = "models/xgb_pipeline.pkl"
-DATA_PATH = "data/raw/XAI_HR_NUMERIC.csv"
+DATA_PATH = "data/Raw/XAI_HR_NUMERIC.csv"
 
 st.set_page_config(page_title="HR Attrition Prediction", layout="wide")
 
